@@ -16,9 +16,7 @@ class SelectionWindow(QWidget):
         layout.setAlignment(Qt.AlignCenter)
         layout.setSpacing(20)
 
-        text_label = QLabel("📄 텍스트")
-        text_label.setStyleSheet("font-size: 20px; font-weight: bold;")
-        layout.addWidget(text_label)
+        layout.addWidget(QLabel("📄 텍스트"))
 
         text_box = QGroupBox()
         text_grid = QGridLayout()
@@ -34,9 +32,7 @@ class SelectionWindow(QWidget):
         text_box.setLayout(text_grid)
         layout.addWidget(text_box)
 
-        code_label = QLabel("💻 코드")
-        code_label.setStyleSheet("font-size: 20px; font-weight: bold;")
-        layout.addWidget(code_label)
+        layout.addWidget(QLabel("💻 코드"))
 
         code_box = QGroupBox()
         code_layout = QHBoxLayout()
