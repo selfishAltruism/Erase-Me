@@ -1,28 +1,11 @@
 import os
 import sys
-import subprocess
 from PyQt5.QtWidgets import QApplication, QStackedWidget
 from PyQt5.QtGui import QFontDatabase, QFont
 
 from intro_window import IntroWindow
 from function_window import FunctionWindow
 from select_window import SelectionWindow
-
-def launch_masking_script():
-    python_executable = sys.executable
-    script_path = os.path.join(os.path.dirname(__file__), "text_masking.py")
-
-    if not os.path.exists(script_path):
-        print("❌ text_masking.py 파일이 존재하지 않습니다:", script_path)
-        return
-
-    print("🚀 text_masking.py 실행 시작!")
-
-    subprocess.Popen(
-        [python_executable, script_path],
-        stdout=sys.stdout,
-        stderr=sys.stderr,
-    )
 
 class MainWindow(QStackedWidget):
     def __init__(self):
@@ -32,14 +15,13 @@ class MainWindow(QStackedWidget):
         self.selection = SelectionWindow(self.show_function_screen)
         self.function = FunctionWindow(self.back_to_selection)
 
-        self.addWidget(self.intro)      # 0
-        self.addWidget(self.selection)  # 1
-        self.addWidget(self.function)   # 2
+        self.addWidget(self.intro)
+        self.addWidget(self.selection)
+        self.addWidget(self.function)
 
         self.setWindowTitle("Erase Me")
         self.resize(1000, 700)
 
-        # 인트로 → 선택 or 기능 자동 분기
         self.setCurrentIndex(0)
         self.show()
 
@@ -60,11 +42,8 @@ class MainWindow(QStackedWidget):
 
 
 if __name__ == '__main__':
-    launch_masking_script()
-
     app = QApplication(sys.argv)
 
-    # Pretendard 폰트 로드
     font_id = QFontDatabase.addApplicationFont("Pretendard-Regular.otf")
     if font_id != -1:
         families = QFontDatabase.applicationFontFamilies(font_id)
