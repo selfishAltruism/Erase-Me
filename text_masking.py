@@ -5,10 +5,9 @@ import time
 import re
 import uuid
 import requests
-import threading
-import pygetwindow as gw
 
 NER_SERVER_URL = "http://ec2-43-203-236-115.ap-northeast-2.compute.amazonaws.com:8000/ner"
+# MASK_ENTITIES = {"PERSON", "DATE", "LOCATION", "ORGANIZATION", "TIME"}
 SELECTION_MASKING = {
     "이름": {"PERSON"},
     "날짜": {"DATE"},
@@ -84,13 +83,7 @@ def partial_unmask(text):
             restored = restored.replace(f"[{tag}_{uid}]", word)
     return restored
 
-def is_chatgpt_open():
-    for w in gw.getWindowsWithTitle("ChatGPT"):
-        if not w.isMinimized and w.title:
-            return True
-    return False
-
-def monitor_clipboard():
+def main():
     print("📋 클립보드 감시 중... (Ctrl+C로 종료)")
     last_clip = pyperclip.paste()
 
@@ -112,18 +105,6 @@ def monitor_clipboard():
             last_clip = masked
 
         time.sleep(0.5)
-
-def main():
-    print("🚀 프로그램 시작됨. ChatGPT 실행 감시 중...")
-    already_run = False
-    while True:
-        if is_chatgpt_open() and not already_run:
-            print("💬 ChatGPT 열림 감지됨 → 클립보드 감시 시작")
-            threading.Thread(target=monitor_clipboard, daemon=True).start()
-            already_run = True
-        elif not is_chatgpt_open():
-            already_run = False
-        time.sleep(5)
 
 if __name__ == "__main__":
     main()
