@@ -1,6 +1,8 @@
 import sys
 import os
 import json
+import subprocess
+import signal
 from PyQt5.QtWidgets import (
     QApplication, QWidget, QVBoxLayout, QHBoxLayout,
     QPushButton, QStackedWidget, QLabel, QFileDialog
@@ -13,6 +15,7 @@ class FunctionWindow(QWidget):
         super().__init__()
         self.back_callback = back_callback
         self.mask_targets = []
+        self.text_proc = None
         self.reload_selected_fields()
         self.initUI()
 
@@ -30,6 +33,31 @@ class FunctionWindow(QWidget):
         self.logo_label = QLabel()
         self.logo_label.setPixmap(logo.scaled(250, 250, Qt.KeepAspectRatio, Qt.SmoothTransformation))
         self.logo_label.setAlignment(Qt.AlignCenter)
+
+        self.btn_text = QPushButton("텍스트")
+        self.btn_text.setCheckable(True)
+        self.btn_text.setFixedSize(300, 50)
+        self.btn_text.clicked.connect(self.toggle_text_masking_process)
+        self.btn_text.setStyleSheet("""
+            QPushButton {
+                background-color: #F2F2F2;
+                color: #3e5879;
+                font-weight: bold;
+                font-size: 18px;
+                font-family: Pretendard;
+                border: 1px solid #3e5879;
+                border-radius: 15px;
+                padding: 10px 20px;
+            }
+            QPushButton:checked {
+                background-color: #3e5879;
+                color: white;
+                border: none;
+            }
+            QPushButton:hover {
+                background-color: #acbacb;
+            }
+        """)
 
         self.btn_image = QPushButton("이미지")
         self.btn_voice = QPushButton("음성")
@@ -50,6 +78,7 @@ class FunctionWindow(QWidget):
 
         hbox = QHBoxLayout()
         hbox.setSpacing(10)
+        hbox.addWidget(self.btn_text)
         hbox.addWidget(self.btn_image)
         hbox.addWidget(self.btn_voice)
 
@@ -58,7 +87,7 @@ class FunctionWindow(QWidget):
         vbox.addLayout(hbox)
         vbox.addWidget(self.stack)
 
-        redo_btn = QPushButton("선택 다시하기")
+        redo_btn = QPushButton("마스킹 범위 재설정")
         redo_btn.setFixedSize(150, 40)
         redo_btn.setStyleSheet("""
             QPushButton {
@@ -83,7 +112,23 @@ class FunctionWindow(QWidget):
         self.resize(1000, 700)
         self.stack.setCurrentIndex(0)
         self.show()
-    
+
+    def toggle_text_masking_process(self):
+        if self.btn_text.isChecked():
+            script_path = os.path.abspath("text_masking.py")
+            self.text_proc = subprocess.Popen(
+                [sys.executable, script_path],
+                stderr=subprocess.DEVNULL
+            )
+            print("🚀 텍스트 마스킹 프로그램 실행됨")
+            self.btn_text.setText("텍스트 (ON)")
+        else:
+            if self.text_proc:
+                self.text_proc.terminate()
+                self.text_proc = None
+                print("🛑 텍스트 마스킹 프로그램 종료됨")
+            self.btn_text.setText("텍스트 (OFF)")
+        
     def handle_back_to_selection(self):
         if os.path.exists("selected_fields.json"):
             os.remove("selected_fields.json")
@@ -105,17 +150,21 @@ class FunctionWindow(QWidget):
         upload_btn.setFixedWidth(200)
         upload_btn.clicked.connect(self.upload_image)
 
-        # 이미지 미리보기 QLabel 생성
         self.img_preview = QLabel()
         self.img_preview.setFixedSize(200, 200)
         self.img_preview.setAlignment(Qt.AlignCenter)
-        #self.img_preview.setStyleSheet("border: 1px solid gray;")
-        self.img_preview.hide()  # 처음엔 숨김
+        self.img_preview.hide()
+
+        self.copy_btn = QPushButton("마스킹 이미지 복사")
+        self.copy_btn.setFixedWidth(200)
+        self.copy_btn.clicked.connect(self.copy_preview_image_to_clipboard)
+        self.copy_btn.hide()
 
         layout.addWidget(label)
         layout.addWidget(upload_btn)
         layout.addWidget(self.img_file_label)
         layout.addWidget(self.img_preview, alignment=Qt.AlignCenter)
+        layout.addWidget(self.copy_btn, alignment=Qt.AlignCenter)
 
         widget = QWidget()
         widget.setLayout(layout)
@@ -152,11 +201,20 @@ class FunctionWindow(QWidget):
                 200, 200, Qt.KeepAspectRatio, Qt.SmoothTransformation
             )
             self.img_preview.setPixmap(pixmap)
-            self.img_preview.show()  # 선택 후 보이기
+            self.img_preview.show()
+            self.copy_btn.show()
         else:
             self.img_file_label.setText("선택된 파일 없음")
             self.img_preview.clear()
-            self.img_preview.hide()  # 선택 취소 시 숨기기
+            self.img_preview.hide()
+            self.copy_btn.hide()
+    
+    def copy_preview_image_to_clipboard(self):
+        if not self.img_preview.pixmap():
+            return
+        clipboard = QApplication.clipboard()
+        clipboard.setPixmap(self.img_preview.pixmap())
+        print("✅ 미리보기 이미지를 클립보드에 복사했습니다.")
 
     def upload_voice(self):
         file_path, _ = QFileDialog.getOpenFileName(self, "음성 선택", "", "Audio Files (*.mp3 *.wav *.m4a)")
@@ -174,6 +232,12 @@ class FunctionWindow(QWidget):
         self.btn_image.setChecked(False)
         self.stack.setCurrentIndex(1)
         self.update_button_style()
+    
+    def closeEvent(self, event):
+        if self.text_proc:
+            self.text_proc.terminate()
+            print("🛑 텍스트 마스킹 프로세스도 함께 종료됨")
+        event.accept()
 
     def update_button_style(self):
         active = """
