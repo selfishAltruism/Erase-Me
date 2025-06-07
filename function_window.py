@@ -132,7 +132,7 @@ class FunctionWindow(QWidget):
 
         vbox.addWidget(self.stack)
 
-        # TODO: 탭 디자인 변경
+        # TODO: 탭 디자인 팀 기호에 맞게 변경
         self.stack.setStyleSheet("""
             QStackedWidget {
                 background-color: #ffffff;
@@ -317,6 +317,7 @@ class FunctionWindow(QWidget):
             print("🛑 텍스트 마스킹 프로세스도 함께 종료됨")
         event.accept()
 
+    # TODO: 탭 디자인 팀 기호에 맞게 변경
     def update_button_style(self):
         active = """
             QPushButton {
@@ -338,7 +339,7 @@ class FunctionWindow(QWidget):
         """
         inactive = """
             QPushButton {
-                background-color: #F2F2F2;
+                background-color: #ffffff;
                 color: #3e5879;
                 font-weight: bold;
                 font-size: 18px;
