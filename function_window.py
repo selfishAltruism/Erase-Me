@@ -118,7 +118,7 @@ class FunctionWindow(QWidget):
             script_path = os.path.abspath("text_masking.py")
             self.text_proc = subprocess.Popen(
                 [sys.executable, script_path],
-                creationflags=subprocess.CREATE_NEW_CONSOLE  # 새 콘솔 창 열기
+                stderr=subprocess.DEVNULL
             )
             print("🚀 텍스트 마스킹 프로그램 실행됨")
             self.btn_text.setText("텍스트 (ON)")
