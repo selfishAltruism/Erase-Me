@@ -34,7 +34,7 @@ class FunctionWindow(QWidget):
     def initUI(self):
         logo = QPixmap("./public/logo.png")
         self.logo_label = QLabel()
-        self.logo_label.setPixmap(logo.scaled(250, 250, Qt.KeepAspectRatio, Qt.SmoothTransformation))
+        self.logo_label.setPixmap(logo.scaled(150, 150, Qt.KeepAspectRatio, Qt.SmoothTransformation))
         self.logo_label.setAlignment(Qt.AlignCenter)
 
         # 텍스트 클릭보드 마스킹 활성화 버튼
@@ -345,7 +345,6 @@ class FunctionWindow(QWidget):
                 font-weight: bold;
                 font-size: 18px;
                 font-family: Pretendard;
-                border: 1px solid #3e5879;
                 border-bottom: none;
                 border-top-left-radius: 8px;
                 border-top-right-radius: 8px;
