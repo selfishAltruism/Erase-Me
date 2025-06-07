@@ -24,7 +24,7 @@ class IntroWindow(QWidget):
                 font-size: 18px;
                 font-family: Pretendard;
                 border: none;
-                border-radius: 15px;
+                border-radius: 8px;
                 padding: 10px 20px;
             }
             QPushButton:hover {
