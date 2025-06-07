@@ -37,6 +37,8 @@ class FunctionWindow(QWidget):
         self.logo_label.setPixmap(logo.scaled(250, 250, Qt.KeepAspectRatio, Qt.SmoothTransformation))
         self.logo_label.setAlignment(Qt.AlignCenter)
 
+        # 텍스트 클릭보드 마스킹 활성화 버튼
+        # TODO: 식별자 이름 정리 필요
         self.btn_text = QPushButton("텍스트 자동 마스킹")
         self.btn_text.setCheckable(True)
         self.btn_text.setFixedSize(450, 50)
@@ -90,6 +92,7 @@ class FunctionWindow(QWidget):
         """)
 
 
+        # 이미지 & 음성 마스킹 결과 탭 선택 버튼
         self.btn_image = QPushButton("이미지 탭")
         self.btn_voice = QPushButton("음성 탭")
         self.btn_image.setCheckable(True)
@@ -129,8 +132,10 @@ class FunctionWindow(QWidget):
 
         vbox.addWidget(self.stack)
 
+        # TODO: 탭 디자인 변경
         self.stack.setStyleSheet("""
             QStackedWidget {
+                background-color: #ffffff;
                 border: 1px solid #3e5879;
                 border-radius: 8px;
             }
@@ -138,7 +143,7 @@ class FunctionWindow(QWidget):
 
         vbox.addSpacing(20)
         redo_btn = QPushButton("마스킹 범위 재설정")
-        redo_btn.setFixedSize(150, 40)
+        redo_btn.setFixedSize(170, 50)
         redo_btn.setStyleSheet("""
             QPushButton {
                 background-color: #F2F2F2;
