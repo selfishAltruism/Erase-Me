@@ -54,7 +54,7 @@ class SelectionWindow(QWidget):
                 font-size: 15px;
                 font-family: Pretendard;
                 border: 1px solid #3e5879;
-                border-radius: 15px;
+                border-radius: 8px;
                 padding: 10px 20px;
             }
             QPushButton:hover {

@@ -15,7 +15,10 @@ class FunctionWindow(QWidget):
         super().__init__()
         self.back_callback = back_callback
         self.mask_targets = []
+
         self.text_proc = None
+        self.img_proc = None
+
         self.reload_selected_fields()
         self.initUI()
 
@@ -29,14 +32,16 @@ class FunctionWindow(QWidget):
         print("불러온 마스킹 대상:", self.mask_targets)
 
     def initUI(self):
-        logo = QPixmap("logo.png")
+        logo = QPixmap("./public/logo.png")
         self.logo_label = QLabel()
         self.logo_label.setPixmap(logo.scaled(250, 250, Qt.KeepAspectRatio, Qt.SmoothTransformation))
         self.logo_label.setAlignment(Qt.AlignCenter)
 
-        self.btn_text = QPushButton("텍스트")
+        # 텍스트 클릭보드 마스킹 활성화 버튼
+        # TODO: 식별자 이름 정리 필요
+        self.btn_text = QPushButton("텍스트 자동 마스킹")
         self.btn_text.setCheckable(True)
-        self.btn_text.setFixedSize(300, 50)
+        self.btn_text.setFixedSize(450, 50)
         self.btn_text.clicked.connect(self.toggle_text_masking_process)
         self.btn_text.setStyleSheet("""
             QPushButton {
@@ -46,7 +51,7 @@ class FunctionWindow(QWidget):
                 font-size: 18px;
                 font-family: Pretendard;
                 border: 1px solid #3e5879;
-                border-radius: 15px;
+                border-radius: 8px;
                 padding: 10px 20px;
             }
             QPushButton:checked {
@@ -59,13 +64,43 @@ class FunctionWindow(QWidget):
             }
         """)
 
-        self.btn_image = QPushButton("이미지")
-        self.btn_voice = QPushButton("음성")
+
+        # 이미지 클릭보드 마스킹 활성화 버튼
+        self.btn_image_masking = QPushButton("이미지 자동 마스킹")
+        self.btn_image_masking.setCheckable(True)
+        self.btn_image_masking.setFixedSize(450, 50)
+        self.btn_image_masking.clicked.connect(self.toggle_image_masking_process)
+        self.btn_image_masking.setStyleSheet("""
+            QPushButton {
+                background-color: #F2F2F2;
+                color: #3e5879;
+                font-weight: bold;
+                font-size: 18px;
+                font-family: Pretendard;
+                border: 1px solid #3e5879;
+                border-radius: 8px;
+                padding: 10px 20px;
+            }
+            QPushButton:checked {
+                background-color: #3e5879;
+                color: white;
+                border: none;
+            }
+            QPushButton:hover {
+                background-color: #acbacb;
+            }
+        """)
+
+
+        # 이미지 & 음성 마스킹 결과 탭 선택 버튼
+        self.btn_image = QPushButton("이미지 탭")
+        self.btn_voice = QPushButton("음성 탭")
         self.btn_image.setCheckable(True)
         self.btn_voice.setCheckable(True)
         self.btn_image.setChecked(True)
-        self.btn_image.setFixedSize(300, 50)
-        self.btn_voice.setFixedSize(300, 50)
+
+        self.btn_image.setFixedSize(450, 50)
+        self.btn_voice.setFixedSize(450, 50)
         self.btn_image.clicked.connect(self.select_image)
         self.btn_voice.clicked.connect(self.select_voice)
         self.update_button_style()
@@ -76,19 +111,39 @@ class FunctionWindow(QWidget):
         self.stack.addWidget(self.image_page)
         self.stack.addWidget(self.voice_page)
 
-        hbox = QHBoxLayout()
-        hbox.setSpacing(10)
-        hbox.addWidget(self.btn_text)
-        hbox.addWidget(self.btn_image)
-        hbox.addWidget(self.btn_voice)
+        hbox_masking = QHBoxLayout()
+        hbox_masking.setSpacing(10)
+        hbox_masking.setContentsMargins(0, 10, 0, 0)
+        hbox_masking.addWidget(self.btn_text)
+        hbox_masking.addWidget(self.btn_image_masking)
+
+        hbox_result_tap = QHBoxLayout()
+        hbox_result_tap.setSpacing(10)
+        hbox_result_tap.setContentsMargins(0, 20, 0, 0)
+        hbox_result_tap.addWidget(self.btn_image)
+        hbox_result_tap.addWidget(self.btn_voice)
 
         vbox = QVBoxLayout()
+        vbox.setSpacing(0)
+        vbox.setContentsMargins(20, 20, 20, 20)
         vbox.addWidget(self.logo_label)
-        vbox.addLayout(hbox)
+        vbox.addLayout(hbox_masking)
+        vbox.addLayout(hbox_result_tap)
+
         vbox.addWidget(self.stack)
 
+        # TODO: 탭 디자인 변경
+        self.stack.setStyleSheet("""
+            QStackedWidget {
+                background-color: #ffffff;
+                border: 1px solid #3e5879;
+                border-radius: 8px;
+            }
+        """)
+
+        vbox.addSpacing(20)
         redo_btn = QPushButton("마스킹 범위 재설정")
-        redo_btn.setFixedSize(150, 40)
+        redo_btn.setFixedSize(170, 50)
         redo_btn.setStyleSheet("""
             QPushButton {
                 background-color: #F2F2F2;
@@ -97,7 +152,7 @@ class FunctionWindow(QWidget):
                 font-size: 15px;
                 font-family: Pretendard;
                 border: 1px solid #3e5879;
-                border-radius: 15px;
+                border-radius: 8px;
                 padding: 10px 20px;
             }
             QPushButton:hover {
@@ -115,19 +170,41 @@ class FunctionWindow(QWidget):
 
     def toggle_text_masking_process(self):
         if self.btn_text.isChecked():
-            script_path = os.path.abspath("text_masking.py")
+            script_path = os.path.abspath("./masking/text_masking.py")
             self.text_proc = subprocess.Popen(
                 [sys.executable, script_path],
                 stderr=subprocess.DEVNULL
             )
             print("🚀 텍스트 마스킹 프로그램 실행됨")
-            self.btn_text.setText("텍스트 (ON)")
+            self.btn_text.setText("텍스트 자동 마스킹 (ON)")
         else:
             if self.text_proc:
                 self.text_proc.terminate()
                 self.text_proc = None
                 print("🛑 텍스트 마스킹 프로그램 종료됨")
-            self.btn_text.setText("텍스트 (OFF)")
+            self.btn_text.setText("텍스트 자동 마스킹 (OFF)")
+
+    def toggle_image_masking_process(self):
+        if self.btn_image_masking.isChecked():
+            self.update_button_style()
+            
+            if self.img_proc is None:
+                script_path = os.path.abspath("./masking/img_masking.py")
+                self.img_proc = subprocess.Popen(
+                    [sys.executable, script_path],
+                    stderr=subprocess.DEVNULL
+                )
+                print("🚀 이미지 마스킹 프로그램 실행됨")
+                self.btn_image_masking.setText("이미지 자동 마스킹 (ON)")
+            else:
+                print("이미 이미지 마스킹 프로그램이 실행 중입니다.")
+        else:
+            self.update_button_style()
+            if self.img_proc:
+                self.img_proc.terminate()
+                self.img_proc = None
+                print("🛑 이미지 마스킹 프로그램 종료됨")
+            self.btn_image_masking.setText("이미지 자동 마스킹 (OFF)")
         
     def handle_back_to_selection(self):
         if os.path.exists("selected_fields.json"):
@@ -221,6 +298,7 @@ class FunctionWindow(QWidget):
         if file_path:
             self.voice_file_label.setText(f"선택된 음성: {file_path.split('/')[-1]}")
 
+    # 이미지 버튼 이벤트 핸들러
     def select_image(self):
         self.btn_image.setChecked(True)
         self.btn_voice.setChecked(False)
@@ -248,7 +326,10 @@ class FunctionWindow(QWidget):
                 font-size: 18px;
                 font-family: Pretendard;
                 border: none;
-                border-radius: 15px;
+                border-top-left-radius: 8px;
+                border-top-right-radius: 8px;
+                border-bottom-left-radius: 0px;
+                border-bottom-right-radius: 0px;
                 padding: 10px 20px;
             }
             QPushButton:hover {
@@ -263,13 +344,18 @@ class FunctionWindow(QWidget):
                 font-size: 18px;
                 font-family: Pretendard;
                 border: 1px solid #3e5879;
-                border-radius: 15px;
+                border-bottom: none;
+                border-top-left-radius: 8px;
+                border-top-right-radius: 8px;
+                border-bottom-left-radius: 0px;
+                border-bottom-right-radius: 0px;
                 padding: 10px 20px;
             }
             QPushButton:hover {
                 background-color: #acbacb;
             }
         """
+
         self.btn_image.setStyleSheet(active if self.btn_image.isChecked() else inactive)
         self.btn_voice.setStyleSheet(active if self.btn_voice.isChecked() else inactive)
 
@@ -277,7 +363,7 @@ class FunctionWindow(QWidget):
 if __name__ == '__main__':
     app = QApplication(sys.argv)
     
-    font_id = QFontDatabase.addApplicationFont("Pretendard-Regular.otf")
+    font_id = QFontDatabase.addApplicationFont("./public/Pretendard-Regular.otf")
     if font_id == -1:
         print("❌ Pretendard 폰트 로딩 실패")
     else:
