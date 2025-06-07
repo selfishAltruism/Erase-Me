@@ -87,24 +87,29 @@ def main():
     print("📋 클립보드 감시 중... (Ctrl+C로 종료)")
     last_clip = pyperclip.paste()
 
-    while True:
-        current_clip = pyperclip.paste()
-        if current_clip != last_clip:
-            if re.search(r'\[([A-Z]+)_([a-f0-9]{8})\]', current_clip):
-                restored = partial_unmask(current_clip)
-                pyperclip.copy(restored)
-                print("\n♻️ 마스킹된 텍스트 감지 → 부분 복원")
-                print("✅ 복원 후 클립보드에 저장됨:\n", restored)
-                last_clip = restored
-                continue
+    try:
+        while True:
+            current_clip = pyperclip.paste()
+            if current_clip != last_clip:
+                if re.search(r'\[([A-Z]+)_([a-f0-9]{8})\]', current_clip):
+                    restored = partial_unmask(current_clip)
+                    pyperclip.copy(restored)
+                    print("\n♻️ 마스킹된 텍스트 감지 → 부분 복원")
+                    print("✅ 복원 후 클립보드에 저장됨:\n", restored)
+                    last_clip = restored
+                    continue
 
-            print("\n🔍 새 복사 감지!\n", current_clip)
-            masked = mask_text_with_cache(current_clip)
-            pyperclip.copy(masked)
-            print("✅ 마스킹 후 클립보드에 저장됨:\n", masked)
-            last_clip = masked
+                print("\n🔍 새 복사 감지!\n", current_clip)
+                masked = mask_text_with_cache(current_clip)
+                pyperclip.copy(masked)
+                print("✅ 마스킹 후 클립보드에 저장됨:\n", masked)
+                last_clip = masked
 
-        time.sleep(0.5)
+            time.sleep(0.5)
+
+    except Exception as e:
+        print(f"❌ 예외 발생: {e}")
+        input("Press Enter to exit...")
 
 if __name__ == "__main__":
     main()
