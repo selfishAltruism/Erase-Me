@@ -6,4 +6,6 @@
 
 ### 실행
 
-`python main.py`
+1. `.env` 활성화
+2. `pip install -r requirements.txt`
+3. `python main.py`
