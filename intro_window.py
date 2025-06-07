@@ -9,7 +9,7 @@ class IntroWindow(QWidget):
         layout.setAlignment(Qt.AlignCenter)
         layout.setSpacing(30)
 
-        logo = QPixmap("logo.png")
+        logo = QPixmap("./public/logo.png")
         logo_label = QLabel()
         logo_label.setPixmap(logo.scaled(400, 400, Qt.KeepAspectRatio, Qt.SmoothTransformation))
         logo_label.setAlignment(Qt.AlignCenter)

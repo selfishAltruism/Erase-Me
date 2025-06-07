@@ -44,7 +44,7 @@ class MainWindow(QStackedWidget):
 if __name__ == '__main__':
     app = QApplication(sys.argv)
 
-    font_id = QFontDatabase.addApplicationFont("Pretendard-Regular.otf")
+    font_id = QFontDatabase.addApplicationFont("./public/Pretendard-Regular.otf")
     if font_id != -1:
         families = QFontDatabase.applicationFontFamilies(font_id)
         if families:

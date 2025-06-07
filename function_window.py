@@ -15,7 +15,10 @@ class FunctionWindow(QWidget):
         super().__init__()
         self.back_callback = back_callback
         self.mask_targets = []
+
         self.text_proc = None
+        self.img_proc = None
+
         self.reload_selected_fields()
         self.initUI()
 
@@ -29,7 +32,7 @@ class FunctionWindow(QWidget):
         print("불러온 마스킹 대상:", self.mask_targets)
 
     def initUI(self):
-        logo = QPixmap("logo.png")
+        logo = QPixmap("./public/logo.png")
         self.logo_label = QLabel()
         self.logo_label.setPixmap(logo.scaled(250, 250, Qt.KeepAspectRatio, Qt.SmoothTransformation))
         self.logo_label.setAlignment(Qt.AlignCenter)
@@ -63,7 +66,9 @@ class FunctionWindow(QWidget):
         self.btn_voice = QPushButton("음성")
         self.btn_image.setCheckable(True)
         self.btn_voice.setCheckable(True)
-        self.btn_image.setChecked(True)
+
+        # self.btn_image.setChecked(False)
+
         self.btn_image.setFixedSize(300, 50)
         self.btn_voice.setFixedSize(300, 50)
         self.btn_image.clicked.connect(self.select_image)
@@ -115,7 +120,7 @@ class FunctionWindow(QWidget):
 
     def toggle_text_masking_process(self):
         if self.btn_text.isChecked():
-            script_path = os.path.abspath("text_masking.py")
+            script_path = os.path.abspath("./masking/text_masking.py")
             self.text_proc = subprocess.Popen(
                 [sys.executable, script_path],
                 stderr=subprocess.DEVNULL
@@ -221,11 +226,30 @@ class FunctionWindow(QWidget):
         if file_path:
             self.voice_file_label.setText(f"선택된 음성: {file_path.split('/')[-1]}")
 
+    # 이미지 버튼 이벤트 핸들러
     def select_image(self):
-        self.btn_image.setChecked(True)
-        self.btn_voice.setChecked(False)
-        self.stack.setCurrentIndex(0)
-        self.update_button_style()
+        if self.btn_image.isChecked():
+            self.btn_voice.setChecked(False)
+            self.stack.setCurrentIndex(0)
+            self.update_button_style()
+            
+            if self.img_proc is None:
+                script_path = os.path.abspath("./masking/img_masking.py")
+                self.img_proc = subprocess.Popen(
+                    [sys.executable, script_path],
+                    stderr=subprocess.DEVNULL
+                )
+                print("🚀 이미지 마스킹 프로그램 실행됨")
+                self.btn_image.setText("이미지 (ON)")
+            else:
+                print("이미 이미지 마스킹 프로그램이 실행 중입니다.")
+        else:
+            self.update_button_style()
+            if self.img_proc:
+                self.img_proc.terminate()
+                self.img_proc = None
+                print("🛑 이미지 마스킹 프로그램 종료됨")
+            self.btn_image.setText("이미지 (OFF)")
 
     def select_voice(self):
         self.btn_voice.setChecked(True)
@@ -277,7 +301,7 @@ class FunctionWindow(QWidget):
 if __name__ == '__main__':
     app = QApplication(sys.argv)
     
-    font_id = QFontDatabase.addApplicationFont("Pretendard-Regular.otf")
+    font_id = QFontDatabase.addApplicationFont("./public/Pretendard-Regular.otf")
     if font_id == -1:
         print("❌ Pretendard 폰트 로딩 실패")
     else:
