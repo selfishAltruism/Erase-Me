@@ -6,6 +6,7 @@ import re
 import uuid
 import requests
 
+# TODO: 서버 주소 env 파일로 이동 필요 (img_masking 참고)
 NER_SERVER_URL = "http://ec2-43-203-236-115.ap-northeast-2.compute.amazonaws.com:8000/ner"
 # MASK_ENTITIES = {"PERSON", "DATE", "LOCATION", "ORGANIZATION", "TIME"}
 SELECTION_MASKING = {

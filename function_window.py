@@ -93,6 +93,7 @@ class FunctionWindow(QWidget):
 
 
         # 이미지 & 음성 마스킹 결과 탭 선택 버튼
+        # TODO: 버튼 텍스트 수정 필요
         self.btn_image = QPushButton("이미지 탭")
         self.btn_voice = QPushButton("음성 탭")
         self.btn_image.setCheckable(True)
@@ -143,7 +144,7 @@ class FunctionWindow(QWidget):
 
         vbox.addSpacing(20)
         redo_btn = QPushButton("마스킹 범위 재설정")
-        redo_btn.setFixedSize(170, 50)
+        redo_btn.setFixedSize(170, 47)
         redo_btn.setStyleSheet("""
             QPushButton {
                 background-color: #F2F2F2;
