@@ -62,7 +62,7 @@ class ImageMaskingApp(QWidget):
         # 레이아웃
         self.layout = QVBoxLayout()
 
-        self.status_label = QLabel("🚧 이미지 클립보드 감시 중...")
+        self.status_label = QLabel("👀 이미지 클립보드 감시 중...")
         self.status_label.setAlignment(Qt.AlignCenter)
         self.layout.addWidget(self.status_label)
 

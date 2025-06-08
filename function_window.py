@@ -3,12 +3,45 @@ import os
 import json
 import subprocess
 import signal
+import datetime
+import requests
+
 from PyQt5.QtWidgets import (
     QApplication, QWidget, QVBoxLayout, QHBoxLayout,
     QPushButton, QStackedWidget, QLabel, QFileDialog
 )
 from PyQt5.QtGui import QPixmap, QFont, QFontDatabase
-from PyQt5.QtCore import Qt
+from PyQt5.QtCore import Qt, QThread, pyqtSignal
+from dotenv import load_dotenv
+
+class ImageUploadWorker(QThread):
+    finished = pyqtSignal(str)
+    error = pyqtSignal(str)
+
+    def __init__(self, server_url, file_path, save_folder):
+        super().__init__()
+        self.server_url = server_url
+        self.file_path = file_path
+        self.save_folder = save_folder
+
+    def run(self):
+        try:
+            with open(self.file_path, "rb") as f:
+                files = {"image": (os.path.basename(self.file_path), f, "image/png")}
+                response = requests.post(self.server_url, files=files)
+
+            if response.status_code == 200:
+                os.makedirs(self.save_folder, exist_ok=True)
+                timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+                save_name = f"masked_{timestamp}_{os.path.basename(self.file_path)}"
+                save_path = os.path.join(self.save_folder, save_name)
+                with open(save_path, "wb") as out:
+                    out.write(response.content)
+                self.finished.emit(save_path)
+            else:
+                self.error.emit(f"❌ 서버 오류: {response.status_code}")
+        except Exception as e:
+            self.error.emit(f"❌ 요청 실패: {e}")
 
 class FunctionWindow(QWidget):
     def __init__(self, back_callback=None):
@@ -228,18 +261,18 @@ class FunctionWindow(QWidget):
         upload_btn.clicked.connect(self.upload_image)
 
         self.img_preview = QLabel()
-        self.img_preview.setFixedSize(200, 200)
+        self.img_preview.setFixedSize(600, 400)
         self.img_preview.setAlignment(Qt.AlignCenter)
         self.img_preview.hide()
 
-        self.copy_btn = QPushButton("마스킹 이미지 복사")
+        self.copy_btn = QPushButton("마스킹 이미지 클립보드 복사")
         self.copy_btn.setFixedWidth(200)
         self.copy_btn.clicked.connect(self.copy_preview_image_to_clipboard)
         self.copy_btn.hide()
 
-        layout.addWidget(label)
-        layout.addWidget(upload_btn)
-        layout.addWidget(self.img_file_label)
+        layout.addWidget(label, alignment=Qt.AlignCenter)
+        layout.addWidget(upload_btn, alignment=Qt.AlignCenter)
+        layout.addWidget(self.img_file_label, alignment=Qt.AlignCenter)
         layout.addWidget(self.img_preview, alignment=Qt.AlignCenter)
         layout.addWidget(self.copy_btn, alignment=Qt.AlignCenter)
 
@@ -271,20 +304,53 @@ class FunctionWindow(QWidget):
         return widget
 
     def upload_image(self):
-        file_path, _ = QFileDialog.getOpenFileName(self, "이미지 선택", "", "Images (*.png *.jpg *.jpeg *.bmp)")
-        if file_path:
-            self.img_file_label.setText(f"선택된 이미지: {file_path.split('/')[-1]}")
-            pixmap = QPixmap(file_path).scaled(
-                200, 200, Qt.KeepAspectRatio, Qt.SmoothTransformation
-            )
-            self.img_preview.setPixmap(pixmap)
-            self.img_preview.show()
-            self.copy_btn.show()
-        else:
+        load_dotenv()
+        server_url = os.getenv("IMG_MASKING_SERVER_URL")
+        if not server_url:
+            QMessageBox.critical(self, "에러", "❌ IMG_MASKING_SERVER_URL 환경 변수가 설정되지 않았습니다.")
+            return
+
+        file_path, _ = QFileDialog.getOpenFileName(
+            self, "이미지 선택", "", "Images (*.png *.jpg *.jpeg *.bmp)"
+        )
+
+        if not file_path:
             self.img_file_label.setText("선택된 파일 없음")
             self.img_preview.clear()
             self.img_preview.hide()
             self.copy_btn.hide()
+            return
+
+        self.img_file_label.setText(f"선택된 이미지: {os.path.basename(file_path)}")
+        self.img_preview.clear()
+        self.img_preview.setText("⏳ 마스킹 처리 중...")
+        self.img_preview.show()
+        self.copy_btn.hide()
+
+        # 버튼 비활성화
+        self.btn_image.setEnabled(False)
+        self.btn_voice.setEnabled(False)
+
+        self.upload_worker = ImageUploadWorker(server_url, file_path, "masked_images")
+        self.upload_worker.finished.connect(self.display_masked_image)
+        self.upload_worker.error.connect(self.display_error)
+        self.upload_worker.start()
+
+    def display_masked_image(self, save_path):
+        pixmap = QPixmap(save_path).scaled(600, 400, Qt.KeepAspectRatio, Qt.SmoothTransformation)
+        self.img_preview.setPixmap(pixmap)
+        self.copy_btn.show()
+
+        # 버튼 활성화
+        self.btn_image.setEnabled(True)
+        self.btn_voice.setEnabled(True)
+
+    def display_error(self, error_message):
+        self.img_preview.setText(error_message)
+
+        # 버튼 활성화
+        self.btn_image.setEnabled(True)
+        self.btn_voice.setEnabled(True)
     
     def copy_preview_image_to_clipboard(self):
         if not self.img_preview.pixmap():
