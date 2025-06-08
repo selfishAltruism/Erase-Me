@@ -11,7 +11,7 @@ from PyQt5.QtWidgets import (
     QPushButton, QStackedWidget, QLabel, QFileDialog
 )
 from PyQt5.QtGui import QPixmap, QFont, QFontDatabase
-from PyQt5.QtCore import Qt, QThread, pyqtSignal
+from PyQt5.QtCore import Qt, QThread, pyqtSignal, QTimer
 from dotenv import load_dotenv
 
 class ImageUploadWorker(QThread):
@@ -256,9 +256,9 @@ class FunctionWindow(QWidget):
         self.img_file_label = QLabel("선택된 파일 없음")
         self.img_file_label.setAlignment(Qt.AlignCenter)
 
-        upload_btn = QPushButton("이미지 선택")
-        upload_btn.setFixedWidth(200)
-        upload_btn.clicked.connect(self.upload_image)
+        self.image_upload_btn = QPushButton("이미지 선택")
+        self.image_upload_btn.setFixedWidth(200)
+        self.image_upload_btn.clicked.connect(self.upload_image)
 
         self.img_preview = QLabel()
         self.img_preview.setFixedSize(600, 400)
@@ -271,7 +271,7 @@ class FunctionWindow(QWidget):
         self.copy_btn.hide()
 
         layout.addWidget(label, alignment=Qt.AlignCenter)
-        layout.addWidget(upload_btn, alignment=Qt.AlignCenter)
+        layout.addWidget(self.image_upload_btn, alignment=Qt.AlignCenter)
         layout.addWidget(self.img_file_label, alignment=Qt.AlignCenter)
         layout.addWidget(self.img_preview, alignment=Qt.AlignCenter)
         layout.addWidget(self.copy_btn, alignment=Qt.AlignCenter)
@@ -287,11 +287,12 @@ class FunctionWindow(QWidget):
 
         label = QLabel("🎤 음성 파일 업로드")
         label.setAlignment(Qt.AlignCenter)
+        label.setStyleSheet("margin-top: 46px;")
 
         self.voice_file_label = QLabel("선택된 파일 없음")
         self.voice_file_label.setAlignment(Qt.AlignCenter)
 
-        self.upload_btn = QPushButton("음성 파일 선택")  # ✅ 클래스 변수
+        self.upload_btn = QPushButton("음성 파일 선택")  # 클래스 변수
         self.upload_btn.setFixedWidth(200)
         self.upload_btn.clicked.connect(self.upload_voice)
 
@@ -301,19 +302,20 @@ class FunctionWindow(QWidget):
         self.masked_result_label.setWordWrap(True)
         self.masked_result_label.setStyleSheet("color: #3e5879; font-size: 16px; padding: 10px;")
 
-        # ✅ 복사 버튼 추가 (초기에는 숨김)
+        # 복사 버튼 추가 (초기에는 숨김)
         self.copy_result_btn = QPushButton("마스킹 결과 복사")
         self.copy_result_btn.setFixedWidth(200)
         self.copy_result_btn.clicked.connect(self.copy_masked_result)
         self.copy_result_btn.hide()
         layout.addWidget(self.copy_result_btn, alignment=Qt.AlignCenter)
 
-        # ✅ 다시 업로드 버튼 추가 (초기에는 숨김)
+        # 다시 업로드 버튼 추가 (초기에는 숨김)
         self.reupload_btn = QPushButton("다시 업로드하기")
         self.reupload_btn.setFixedWidth(200)
         self.reupload_btn.clicked.connect(self.reset_voice_page)
         self.reupload_btn.hide()
         layout.addWidget(self.reupload_btn, alignment=Qt.AlignCenter)
+
         # 레이아웃 구성
         layout.addWidget(label)
         layout.addWidget(self.upload_btn, alignment=Qt.AlignCenter)
@@ -360,9 +362,8 @@ class FunctionWindow(QWidget):
         self.img_preview.show()
         self.copy_btn.hide()
 
-        # 버튼 비활성화
-        self.btn_image.setEnabled(False)
-        self.btn_voice.setEnabled(False)
+        # 이미지 버튼 비활성화
+        self.image_upload_btn.hide()
 
         self.upload_worker = ImageUploadWorker(server_url, file_path, "masked_images")
         self.upload_worker.finished.connect(self.display_masked_image)
@@ -373,17 +374,11 @@ class FunctionWindow(QWidget):
         pixmap = QPixmap(save_path).scaled(600, 400, Qt.KeepAspectRatio, Qt.SmoothTransformation)
         self.img_preview.setPixmap(pixmap)
         self.copy_btn.show()
-
-        # 버튼 활성화
-        self.btn_image.setEnabled(True)
-        self.btn_voice.setEnabled(True)
+        self.image_upload_btn.show()
 
     def display_error(self, error_message):
         self.img_preview.setText(error_message)
-
-        # 버튼 활성화
-        self.btn_image.setEnabled(True)
-        self.btn_voice.setEnabled(True)
+        self.image_upload_btn.show()
     
     def copy_preview_image_to_clipboard(self):
         if not self.img_preview.pixmap():
@@ -396,7 +391,7 @@ class FunctionWindow(QWidget):
         file_path, _ = QFileDialog.getOpenFileName(self, "음성 선택", "", "Audio Files (*.mp3 *.wav *.m4a)")
         if file_path:
             self.voice_file_label.setText(f"선택된 음성: {file_path.split('/')[-1]}")
-            self.masked_result_label.setText("🎤 마스킹 처리 중입니다...")
+            self.masked_result_label.setText("⏳ 마스킹 처리 중...")
 
             self.sender().hide()  # QPushButton
             self.voice_file_label.hide()
@@ -428,7 +423,7 @@ class FunctionWindow(QWidget):
                 result_text = f.read().strip()
             self.masked_result_label.setText(f"🛡️ 마스킹 결과:\n{result_text}")
             self.copy_result_btn.show()
-            self.reupload_btn.show()  # 👉 다시 업로드 버튼 표시
+            self.reupload_btn.show()  # 다시 업로드 버튼 표시
             self.check_result_timer.stop()
 
     def copy_masked_result(self):
