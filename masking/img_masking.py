@@ -11,6 +11,17 @@ from PyQt5.QtWidgets import (
 from PyQt5.QtGui import QPixmap, QFontDatabase, QFont
 from PyQt5.QtCore import Qt, QTimer, QThread, pyqtSignal
 
+
+""" 
+1. 마스킹 결과에 대해서 복사를 하게 되면, 일정 시간 (interrupt_delay) 동안 마스킹 자동 수행이 무시됨.
+2. 첫 실행 시 클립보드를 확인하는 경우 마스킹 자동 수행이 무시됨. (프로그램 실행 시 바로 작동을 막기 위함)
+
+TODO: 마스킹 탭을 강제 종료하는 경우, 에러가 걸림 => 메인 탭에서 종료 시 정상 작동
+ """
+
+# TODO: 발표 계획 맞춰서 변경 필요
+interrupt_delay = 5000
+
 class MaskingWorker(QThread):
     finished = pyqtSignal(str)
     error = pyqtSignal(str)
@@ -37,7 +48,7 @@ class MaskingWorker(QThread):
 class ImageMaskingApp(QWidget):
     def __init__(self):
         super().__init__()
-        self.setWindowTitle("Erase Me : Image Masking")
+        self.setWindowTitle("Erase Me: Image Masking")
         self.resize(600, 500)
 
         # 환경변수 로드
@@ -52,7 +63,7 @@ class ImageMaskingApp(QWidget):
         if font_id != -1:
             font_family = QFontDatabase.applicationFontFamilies(font_id)[0]
             app_font = QFont(font_family)
-            app_font.setPointSize(app_font.pointSize() + 2)  # 폰트 크기 2px 증가
+            app_font.setPointSize(app_font.pointSize() + 1) 
             QApplication.setFont(app_font)
 
         # 레이아웃
@@ -71,7 +82,7 @@ class ImageMaskingApp(QWidget):
 
         # 클립보드 복사 버튼
         self.copy_button = QPushButton("마스킹 이미지 클립보드 복사")
-        self.copy_button.setMinimumHeight(50)  # 버튼 높이 증가
+        self.copy_button.setMinimumHeight(50)
         self.copy_button.clicked.connect(self.copy_image_to_clipboard)
         self.copy_button.setEnabled(False)
         self.layout.addWidget(self.copy_button)
@@ -79,8 +90,10 @@ class ImageMaskingApp(QWidget):
         self.setLayout(self.layout)
 
         # 상태 변수
-        self.last_clip = None
+        clipboard = QApplication.clipboard()
+        self.last_clip = clipboard.pixmap()  # macOS 호환을 위해 QClipboard 사용
         self.is_processing = False
+        self.is_internal_copy = False
 
         # 타이머로 감시
         self.timer = QTimer()
@@ -88,15 +101,16 @@ class ImageMaskingApp(QWidget):
         self.timer.start(500)  # 0.5초마다 감시
 
     def monitor_clipboard(self):
-        if self.is_processing:
-            return  # 처리 중이면 감시 중단
+        if self.is_processing or self.is_internal_copy:
+            return  # 처리 중이거나 내부 복사 시 감시 중단
 
-        img = ImageGrab.grabclipboard()
-        if img is not None and img != self.last_clip:
+        clipboard = QApplication.clipboard()
+        img = clipboard.pixmap()
+        if img and not img.isNull() and img.toImage() != self.last_clip.toImage():
             self.last_clip = img
             img_path = "img/code.png"
             os.makedirs("img", exist_ok=True)
-            img.save(img_path)
+            img.save(img_path, "PNG")
             print(f"✅ 캡처 이미지 저장됨: {img_path}")
 
             # 창을 최상단에 띄우기
@@ -123,7 +137,9 @@ class ImageMaskingApp(QWidget):
     def update_masked_image(self, path):
         pixmap = QPixmap(path)
         if not pixmap.isNull():
-            self.masked_image_label.setPixmap(pixmap.scaled(500, 400, Qt.KeepAspectRatio, Qt.SmoothTransformation))
+            self.masked_image_label.setPixmap(
+                pixmap.scaled(500, 400, Qt.KeepAspectRatio, Qt.SmoothTransformation)
+            )
             self.copy_button.setEnabled(True)
         else:
             self.masked_image_label.setText("❌ 이미지 로딩 실패")
@@ -132,6 +148,13 @@ class ImageMaskingApp(QWidget):
         self.setWindowFlags(self.windowFlags() & ~Qt.WindowStaysOnTopHint)
         self.show()
         self.is_processing = False
+
+        # 서버 응답 직후 내부 복사 방지 플래그 설정
+        self.is_internal_copy = True
+        QTimer.singleShot(interrupt_delay, self.reset_internal_copy)
+
+    def reset_internal_copy(self):
+        self.is_internal_copy = False
 
     def show_error(self, message):
         QMessageBox.critical(self, "에러", message)
@@ -147,7 +170,8 @@ class ImageMaskingApp(QWidget):
         pixmap = self.masked_image_label.pixmap()
         if pixmap:
             clipboard.setPixmap(pixmap)
-            QMessageBox.information(self, "성공", "✅ 마스킹 이미지를 클립보드에 복사했습니다.")
+            self.last_clip = clipboard.pixmap()  # 내부 복사 이미지 등록 (macOS 호환)
+            QMessageBox.information(self, "성공", "마스킹 이미지를 클립보드에 복사했습니다.")
         else:
             QMessageBox.warning(self, "오류", "❌ 복사할 이미지가 없습니다.")
 
