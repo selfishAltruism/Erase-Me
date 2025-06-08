@@ -1,8 +1,9 @@
 import os
 import sys
 import time
+import datetime
 import requests
-from PIL import ImageGrab, Image
+from PIL import Image
 from dotenv import load_dotenv
 
 from PyQt5.QtWidgets import (
@@ -11,31 +12,23 @@ from PyQt5.QtWidgets import (
 from PyQt5.QtGui import QPixmap, QFontDatabase, QFont
 from PyQt5.QtCore import Qt, QTimer, QThread, pyqtSignal
 
-
-""" 
-1. 마스킹 결과에 대해서 복사를 하게 되면, 일정 시간 (interrupt_delay) 동안 마스킹 자동 수행이 무시됨.
-2. 첫 실행 시 클립보드를 확인하는 경우 마스킹 자동 수행이 무시됨. (프로그램 실행 시 바로 작동을 막기 위함)
-
-TODO: 마스킹 탭을 강제 종료하는 경우, 에러가 걸림 => 메인 탭에서 종료 시 정상 작동
- """
-
-# TODO: 발표 계획 맞춰서 변경 필요
+# TODO: 발표 시간 맞춰서 변경 필요
 interrupt_delay = 5000
 
 class MaskingWorker(QThread):
     finished = pyqtSignal(str)
     error = pyqtSignal(str)
 
-    def __init__(self, server_url, img_path, save_path):
+    def __init__(self, server_url, img_data, save_path):
         super().__init__()
         self.server_url = server_url
-        self.img_path = img_path
+        self.img_data = img_data
         self.save_path = save_path
 
     def run(self):
         try:
-            with open(self.img_path, "rb") as f:
-                res = requests.post(self.server_url, files={"image": f})
+            files = {"image": ("clipboard.png", self.img_data, "image/png")}
+            res = requests.post(self.server_url, files=files)
             if res.status_code == 200:
                 with open(self.save_path, "wb") as out:
                     out.write(res.content)
@@ -63,7 +56,7 @@ class ImageMaskingApp(QWidget):
         if font_id != -1:
             font_family = QFontDatabase.applicationFontFamilies(font_id)[0]
             app_font = QFont(font_family)
-            app_font.setPointSize(app_font.pointSize() + 1) 
+            app_font.setPointSize(app_font.pointSize() + 1)
             QApplication.setFont(app_font)
 
         # 레이아웃
@@ -106,12 +99,21 @@ class ImageMaskingApp(QWidget):
 
         clipboard = QApplication.clipboard()
         img = clipboard.pixmap()
-        if img and not img.isNull() and img.toImage() != self.last_clip.toImage():
+        if img and not img.isNull() and (self.last_clip is None or img.toImage() != self.last_clip.toImage()):
             self.last_clip = img
-            img_path = "img/code.png"
-            os.makedirs("img", exist_ok=True)
-            img.save(img_path, "PNG")
-            print(f"✅ 캡처 이미지 저장됨: {img_path}")
+
+            # 이미지 데이터를 PNG로 변환
+            buffer = img.toImage().bits().asstring(img.width() * img.height() * 4)
+            qimage = img.toImage()
+            byte_array = qimage.bits().asstring(qimage.byteCount())
+            image = Image.frombytes("RGBA", (qimage.width(), qimage.height()), byte_array)
+            img_data = self.qimage_to_bytes(qimage)
+
+            # 고유한 파일명 생성
+            timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+            os.makedirs("masked_images", exist_ok=True)
+            save_path = f"masked_images/code_{timestamp}.png"
+            print(f"✅ 서버 요청 준비 완료: {save_path}")
 
             # 창을 최상단에 띄우기
             self.setWindowFlags(self.windowFlags() | Qt.WindowStaysOnTopHint)
@@ -120,6 +122,7 @@ class ImageMaskingApp(QWidget):
             self.activateWindow()
 
             # UI 업데이트
+            # TODO: 기획에 따라 로딩 UI 삽입
             self.masked_image_label.setText("⏳ 서버로 이미지 전송 중...")
             self.copy_button.setEnabled(False)
 
@@ -127,12 +130,19 @@ class ImageMaskingApp(QWidget):
             self.is_processing = True
             self.worker = MaskingWorker(
                 self.server_url,
-                img_path,
-                "masked_result.png"
+                img_data,
+                save_path
             )
             self.worker.finished.connect(self.update_masked_image)
             self.worker.error.connect(self.show_error)
             self.worker.start()
+
+    def qimage_to_bytes(self, qimage):
+        from PyQt5.QtCore import QBuffer, QByteArray
+        buffer = QBuffer()
+        buffer.open(QBuffer.ReadWrite)
+        qimage.save(buffer, "PNG")
+        return buffer.data()
 
     def update_masked_image(self, path):
         pixmap = QPixmap(path)
@@ -170,7 +180,7 @@ class ImageMaskingApp(QWidget):
         pixmap = self.masked_image_label.pixmap()
         if pixmap:
             clipboard.setPixmap(pixmap)
-            self.last_clip = clipboard.pixmap()  # 내부 복사 이미지 등록 (macOS 호환)
+            self.last_clip = clipboard.pixmap() 
             QMessageBox.information(self, "성공", "마스킹 이미지를 클립보드에 복사했습니다.")
         else:
             QMessageBox.warning(self, "오류", "❌ 복사할 이미지가 없습니다.")
