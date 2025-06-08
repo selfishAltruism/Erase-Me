@@ -3,3 +3,6 @@ pyperclip
 PyQt5
 Pillow
 python-dotenv
+pydub
+google-cloud-speech
+requests
